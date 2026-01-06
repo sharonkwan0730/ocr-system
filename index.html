@@ -55,7 +55,7 @@
                 <span class="tech-badge">🎯 智能匹配</span>
             </div>
             <div class="alert">
-                <strong>💡 使用說明：</strong> 此為線上版本，支援掃描PDF的OCR辨識。所有處理都在您的瀏覽器中進行，PDF檔案不會上傳到服務器，完全安全。首次使用會下載OCR語言包（約30MB），請稍候片刻。
+                <strong>💡 使用說明：</strong> 支援 PDF、照片上傳或直接拍照！📱 iPhone 用戶可點擊上傳區直接拍照。所有處理都在您的瀏覽器中進行，檔案不會上傳到服務器，完全安全。首次使用會下載 OCR 語言包（約 30MB），請稍候。
             </div>
         </div>
 
@@ -63,13 +63,13 @@
             <div class="upload-grid">
                 <div class="upload-area" id="expenseUpload" onclick="document.getElementById('expenseInput').click()">
                     <h3>📄 請款單 PDF</h3>
-                    <p id="expenseLabel" style="color:#666; font-size:0.9rem">點擊上傳 (支援掃描檔)</p>
-                    <input type="file" id="expenseInput" accept=".pdf">
+                    <p id="expenseLabel" style="color:#666; font-size:0.9rem">點擊上傳 PDF 或拍照</p>
+                    <input type="file" id="expenseInput" accept=".pdf,application/pdf,image/*" capture="environment">
                 </div>
                 <div class="upload-area" id="receiptUpload" onclick="document.getElementById('receiptInput').click()">
                     <h3>📋 核銷單據 PDF</h3>
-                    <p id="receiptLabel" style="color:#666; font-size:0.9rem">點擊上傳 (支援掃描檔)</p>
-                    <input type="file" id="receiptInput" accept=".pdf">
+                    <p id="receiptLabel" style="color:#666; font-size:0.9rem">點擊上傳 PDF 或拍照</p>
+                    <input type="file" id="receiptInput" accept=".pdf,application/pdf,image/*" capture="environment">
                 </div>
             </div>
             <div style="text-align: center;">
@@ -126,8 +126,23 @@
 
         function handleFile(type, file) {
             if(!file) return;
-            if(type === 'expense') { expenseFile = file; updateUI('expenseUpload', 'expenseLabel', file.name); }
-            else { receiptFile = file; updateUI('receiptUpload', 'receiptLabel', file.name); }
+            
+            // 檢查檔案類型
+            const isImage = file.type.startsWith('image/');
+            const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+            
+            if (!isImage && !isPDF) {
+                alert('請上傳 PDF 或圖片檔案');
+                return;
+            }
+            
+            if(type === 'expense') { 
+                expenseFile = file; 
+                updateUI('expenseUpload', 'expenseLabel', file.name + (isImage ? ' (圖片)' : '')); 
+            } else { 
+                receiptFile = file; 
+                updateUI('receiptUpload', 'receiptLabel', file.name + (isImage ? ' (圖片)' : '')); 
+            }
             document.getElementById('verifyBtn').disabled = !(expenseFile && receiptFile);
         }
 
@@ -176,7 +191,41 @@
             document.getElementById('resultsBody').innerHTML = `<tr><td colspan="8"><div class="loading"><p id="loadingText" style="font-weight:bold; font-size:1.1rem; color:#2563eb;">🧠 OCR引擎啟動中...</p><div class="progress-bar"><div class="progress-fill" style="width:1%"></div></div></div></td></tr>`;
         }
 
+        // 輔助函數：將圖片轉為 PDF-like 處理
+        async function convertImageToPDFLike(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        // 創建一個模擬的 PDF 結構
+                        resolve({
+                            isImage: true,
+                            imageData: e.target.result,
+                            width: img.width,
+                            height: img.height
+                        });
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
         async function parseStructuredExpenseTable(file) {
+            // 檢查是否為圖片
+            if (file.type.startsWith('image/')) {
+                updateLoadingText("📸 檢測到圖片檔，使用 OCR 解析...");
+                const imageData = await convertImageToPDFLike(file);
+                // 對於圖片，直接用 OCR 處理，返回空結構
+                return {
+                    currency: "NT$",
+                    items: []
+                };
+            }
+            
             const ab = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument(ab).promise;
             const items = [];
@@ -250,6 +299,38 @@
         }
 
         async function extractReceiptDataOptical(file) {
+            // 檢查是否為圖片
+            if (file.type.startsWith('image/')) {
+                updateLoadingText("📸 正在OCR掃描圖片...");
+                const imageData = await convertImageToPDFLike(file);
+                
+                const worker = await Tesseract.createWorker('eng+chi_tra');
+                updateProgressBar(50);
+                
+                const img = new Image();
+                img.src = imageData.imageData;
+                await new Promise(resolve => img.onload = resolve);
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                
+                applyRedChannelFilter(canvas);
+                
+                updateLoadingText("📸 正在執行 OCR 辨識...");
+                const { data: { text } } = await worker.recognize(canvas);
+                updateProgressBar(100);
+                
+                await worker.terminate();
+                canvas.width = 1;
+                canvas.height = 1;
+                
+                const amounts = parseReceiptAmounts(text);
+                return { amounts: amounts, fullText: text };
+            }
+            
             const ab = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument(ab).promise;
             let fullText = '';
