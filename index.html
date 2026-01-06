@@ -55,21 +55,46 @@
                 <span class="tech-badge">🎯 智能匹配</span>
             </div>
             <div class="alert">
-                <strong>💡 使用說明：</strong> 支援 PDF、照片上傳或直接拍照！📱 iPhone 用戶可點擊上傳區直接拍照。所有處理都在您的瀏覽器中進行，檔案不會上傳到服務器，完全安全。首次使用會下載 OCR 語言包（約 30MB），請稍候。
+                <strong>💡 使用說明：</strong> 支援 PDF 和圖片！<br>
+                📱 <strong>iPhone 用戶：</strong> 點「📁 選擇檔案」可從相簿選擇，點「📸 拍照」可直接拍攝。<br>
+                💻 <strong>電腦用戶：</strong> 點「📁 選擇檔案」上傳 PDF 或圖片。<br>
+                所有處理都在瀏覽器進行，檔案不會上傳，完全安全。
             </div>
         </div>
 
         <div class="upload-section">
             <div class="upload-grid">
-                <div class="upload-area" id="expenseUpload" onclick="document.getElementById('expenseInput').click()">
-                    <h3>📄 請款單 PDF</h3>
-                    <p id="expenseLabel" style="color:#666; font-size:0.9rem">點擊上傳 PDF 或拍照</p>
-                    <input type="file" id="expenseInput" accept=".pdf,application/pdf,image/*" capture="environment">
+                <div class="upload-area" id="expenseUpload">
+                    <h3>📄 請款單</h3>
+                    <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem;">
+                        <button type="button" onclick="document.getElementById('expenseInput').click()" 
+                                style="padding: 0.75rem 1.5rem; background: #2563eb; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;">
+                            📁 選擇檔案
+                        </button>
+                        <button type="button" onclick="document.getElementById('expenseCamera').click()" 
+                                style="padding: 0.75rem 1.5rem; background: #10b981; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;">
+                            📸 拍照
+                        </button>
+                    </div>
+                    <p id="expenseLabel" style="color:#666; font-size:0.9rem; margin-top: 1rem;">選擇 PDF 或圖片</p>
+                    <input type="file" id="expenseInput" accept=".pdf,application/pdf,image/*" style="display: none;">
+                    <input type="file" id="expenseCamera" accept="image/*" capture="environment" style="display: none;">
                 </div>
-                <div class="upload-area" id="receiptUpload" onclick="document.getElementById('receiptInput').click()">
-                    <h3>📋 核銷單據 PDF</h3>
-                    <p id="receiptLabel" style="color:#666; font-size:0.9rem">點擊上傳 PDF 或拍照</p>
-                    <input type="file" id="receiptInput" accept=".pdf,application/pdf,image/*" capture="environment">
+                <div class="upload-area" id="receiptUpload">
+                    <h3>📋 核銷單據</h3>
+                    <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem;">
+                        <button type="button" onclick="document.getElementById('receiptInput').click()" 
+                                style="padding: 0.75rem 1.5rem; background: #2563eb; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;">
+                            📁 選擇檔案
+                        </button>
+                        <button type="button" onclick="document.getElementById('receiptCamera').click()" 
+                                style="padding: 0.75rem 1.5rem; background: #10b981; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;">
+                            📸 拍照
+                        </button>
+                    </div>
+                    <p id="receiptLabel" style="color:#666; font-size:0.9rem; margin-top: 1rem;">選擇 PDF 或圖片</p>
+                    <input type="file" id="receiptInput" accept=".pdf,application/pdf,image/*" style="display: none;">
+                    <input type="file" id="receiptCamera" accept="image/*" capture="environment" style="display: none;">
                 </div>
             </div>
             <div style="text-align: center;">
@@ -152,7 +177,9 @@
         }
 
         document.getElementById('expenseInput').addEventListener('change', e => handleFile('expense', e.target.files[0]));
+        document.getElementById('expenseCamera').addEventListener('change', e => handleFile('expense', e.target.files[0]));
         document.getElementById('receiptInput').addEventListener('change', e => handleFile('receipt', e.target.files[0]));
+        document.getElementById('receiptCamera').addEventListener('change', e => handleFile('receipt', e.target.files[0]));
 
         document.getElementById('verifyBtn').addEventListener('click', async () => {
             showLoading();
